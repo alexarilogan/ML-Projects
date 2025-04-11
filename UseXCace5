@@ -1,0 +1,54 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+# 1. Загрузка данных (MNIST - рукописные цифры)
+transform = transforms.ToTensor()
+train_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+test_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+
+train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
+test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
+
+# 2. Простая нейросеть
+class SmallNet(nn.Module):
+    def __init__(self):
+        super(SmallNet, self).__init__()
+        self.fc1 = nn.Linear(28 * 28, 128)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = x.view(-1, 28 * 28)  # преобразуем 2D изображение в 1D вектор
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# 3. Инициализация модели, функции потерь и оптимизатора
+model = SmallNet()
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# 4. Обучение
+for epoch in range(5):  # 5 эпох
+    for images, labels in train_loader:
+        optimizer.zero_grad()
+        output = model(images)
+        loss = criterion(output, labels)
+        loss.backward()
+        optimizer.step()
+    print(f'Epoch {epoch+1}, Loss: {loss.item():.4f}')
+
+# 5. Тестирование
+correct = 0
+total = 0
+with torch.no_grad():
+    for images, labels in test_loader:
+        output = model(images)
+        _, predicted = torch.max(output, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+print(f'Accuracy: {100 * correct / total:.2f}%')
